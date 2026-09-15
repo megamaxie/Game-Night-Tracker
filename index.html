@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Night Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2b1d0e">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Tracker">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --dark:#2b1d0e;
+    --accent:#f4b840;
+    --accent2:#d98e2b;
+    --cream:#fdf6e8;
+    --cream2:#fbead0;
+    --line:#e0c48a;
+    --textdark:#4a3a22;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--cream);
+    color:var(--textdark);
+    transition:background 0.25s ease;
+  }
+
+  /* ===== Screens ===== */
+  .screen{
+    display:none;
+    padding-bottom:40px;
+    min-height:100vh;
+    background:var(--cream);
+  }
+  .screen.active{
+    display:block;
+  }
+  .container{
+    max-width:640px;
+    margin:0 auto;
+    padding:0 16px;
+  }
+
+  /* ===== Shared header ===== */
+  header{
+    background:var(--dark);
+    padding:22px 16px 18px;
+    text-align:center;
+    position:relative;
+  }
+  header h1{
+    color:var(--accent);
+    font-size:26px;
+    letter-spacing:2px;
+    margin:0;
+  }
+  header h2{
+    color:var(--cream);
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:1.5px;
+    margin:4px 0 0;
+  }
+  header p.tagline{
+    color:var(--accent2);
+    font-size:11px;
+    margin:6px 0 0;
+    font-style:italic;
+  }
+  .back-btn{
+    position:absolute;
+    left:14px;
+    top:18px;
+    background:rgba(255,255,255,0.12);
+    border:none;
+    color:var(--cream);
+    font-size:12px;
+    font-weight:700;
+    padding:7px 12px;
+    border-radius:7px;
+    cursor:pointer;
+    letter-spacing:0.5px;
+  }
+  .back-btn:active{transform:scale(0.96);}
+
+  /* ===== Home screen game tiles ===== */
+  .home-intro{
+    text-align:center;
+    padding:26px 16px 6px;
+  }
+  .home-intro h1{
+    font-size:26px;
+    letter-spacing:1px;
+    color:#2b1d0e;
+    margin:0;
+  }
+  .home-intro p{
+    font-size:12.5px;
+    color:#6b5a44;
+    margin:6px 0 0;
+  }
+  .tile-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    padding:20px 16px 10px;
+    max-width:640px;
+    margin:0 auto;
+  }
+  .game-tile{
+    border:none;
+    border-radius:16px;
+    padding:20px 14px;
+    text-align:left;
+    cursor:pointer;
+    color:#fff;
+    position:relative;
+    overflow:hidden;
+    min-height:120px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+  .game-tile:active{transform:scale(0.97);}
+  .game-tile .tile-icon{
+    font-size:26px;
+    margin-bottom:8px;
+  }
+  .game-tile .tile-name{
+    font-weight:800;
+    font-size:16px;
+    letter-spacing:0.5px;
+  }
+  .game-tile .tile-sub{
+    font-size:10.5px;
+    opacity:0.85;
+    margin-top:2px;
+  }
+  .game-tile .tile-stats{
+    font-size:10px;
+    margin-top:10px;
+    opacity:0.9;
+    font-weight:700;
+  }
+  .tile-hive{ background:linear-gradient(135deg,#2b1d0e,#a9721f); }
+  .tile-shobu{ background:linear-gradient(135deg,#201c18,#7a6a4f); }
+  .tile-onitama{ background:linear-gradient(135deg,#1c1712,#a02c2c); }
+  .tile-duke{ background:linear-gradient(135deg,#232120,#7a2130); }
+  .tile-warchest{ background:linear-gradient(135deg,#201a12,#96731c); }
+
+  /* ===== Wins / scoreboard cards (shared) ===== */
+  .wins-board{
+    display:flex;
+    gap:10px;
+    padding:16px 0 6px;
+  }
+  .wins-card{
+    flex:1;
+    background:var(--accent);
+    border-radius:12px;
+    padding:10px 10px;
+    text-align:center;
+  }
+  .wins-card .name{
+    color:var(--dark);
+    font-weight:800;
+    font-size:12px;
+    letter-spacing:1px;
+  }
+  .wins-card .count{
+    color:var(--dark);
+    font-size:26px;
+    font-weight:800;
+    line-height:1.15;
+  }
+  .wins-card .label{
+    color:var(--dark);
+    font-size:9.5px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    opacity:0.75;
+  }
+  .losses-row{
+    display:flex;
+    gap:10px;
+    padding:0 0 10px;
+    font-size:10.5px;
+    color:var(--textdark);
+    opacity:0.75;
+  }
+  .losses-row > div{flex:1; text-align:center;}
+
+  .game-tag{
+    text-align:center;
+    font-size:11.5px;
+    font-weight:700;
+    color:var(--dark);
+    letter-spacing:1px;
+    margin:10px 0 4px;
+    text-transform:uppercase;
+    opacity:0.75;
+  }
+  .scoreboard{
+    display:flex;
+    gap:10px;
+    padding:6px 0 14px;
+  }
+  .score-card{
+    flex:1;
+    background:var(--dark);
+    border-radius:12px;
+    padding:14px 10px;
+    text-align:center;
+  }
+  .score-card .name{
+    color:var(--accent);
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:1px;
+  }
+  .score-card .count{
+    color:var(--cream);
+    font-size:38px;
+    font-weight:800;
+    line-height:1.1;
+    margin-top:2px;
+  }
+  .score-card .label{
+    color:var(--accent2);
+    font-size:10px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+  }
+
+  /* ===== Rule cards (Hive only) ===== */
+  .rule-card{
+    background:var(--cream2);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .rule-card:nth-child(even){
+    background:var(--cream);
+  }
+  .rule-top{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+  }
+  .hex{
+    flex-shrink:0;
+    width:30px;
+    height:30px;
+    background:var(--dark);
+    color:var(--accent);
+    font-weight:700;
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  }
+  .rule-text{flex:1;min-width:0;}
+  .rule-title{
+    font-weight:700;
+    font-size:14.5px;
+    color:var(--dark);
+    margin:0 0 2px;
+  }
+  .rule-desc{
+    font-size:12px;
+    margin:0;
+    line-height:1.35;
+    color:var(--textdark);
+  }
+  .tag{
+    display:inline-block;
+    background:var(--accent2);
+    color:var(--dark);
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    padding:2px 8px;
+    border-radius:5px;
+    margin-top:5px;
+  }
+  .controls{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+  }
+  .player-btn{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--dark);
+    border:none;
+    border-radius:8px;
+    padding:8px 12px;
+    cursor:pointer;
+    user-select:none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .player-btn:active{transform:scale(0.97);}
+  .player-btn .pname{
+    color:var(--accent);
+    font-weight:700;
+    font-size:13px;
+  }
+  .player-btn .pcount{
+    color:var(--cream);
+    font-weight:800;
+    font-size:16px;
+    background:rgba(255,255,255,0.08);
+    border-radius:6px;
+    min-width:26px;
+    text-align:center;
+    padding:2px 4px;
+  }
+  .undo-row{
+    display:flex;
+    justify-content:flex-end;
+    gap:14px;
+    margin-top:6px;
+    flex-wrap:wrap;
+  }
+  .undo-link{
+    font-size:10.5px;
+    color:var(--accent2);
+    text-decoration:underline;
+    cursor:pointer;
+    background:none;
+    border:none;
+    padding:2px;
+  }
+  .special-btn{
+    flex:1;
+    background:var(--dark);
+    border:none;
+    border-radius:8px;
+    padding:8px 12px;
+    color:var(--accent);
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .special-btn .pcount{
+    color:var(--cream);
+    font-weight:800;
+    font-size:16px;
+    background:rgba(255,255,255,0.08);
+    border-radius:6px;
+    min-width:26px;
+    text-align:center;
+    padding:2px 4px;
+  }
+
+  /* ===== End game / win declaration (shared) ===== */
+  .endgame-box{
+    background:var(--dark);
+    border-radius:12px;
+    padding:14px;
+    margin:18px 0 6px;
+    text-align:center;
+  }
+  .endgame-box .eg-title{
+    color:var(--accent);
+    font-weight:800;
+    font-size:13px;
+    letter-spacing:1px;
+    margin-bottom:10px;
+  }
+  .endgame-controls{
+    display:flex;
+    gap:10px;
+  }
+  .win-btn{
+    flex:1;
+    background:var(--accent);
+    border:none;
+    border-radius:8px;
+    padding:10px;
+    font-weight:800;
+    font-size:13px;
+    color:var(--dark);
+    cursor:pointer;
+    letter-spacing:0.5px;
+  }
+  .win-btn:active{transform:scale(0.97);}
+
+  /* ===== History (shared) ===== */
+  .history-heading{
+    font-size:15px;
+    font-weight:800;
+    color:var(--dark);
+    margin:22px 0 8px;
+    letter-spacing:0.5px;
+  }
+  .history-empty{
+    font-size:12px;
+    color:var(--textdark);
+    opacity:0.7;
+    font-style:italic;
+    margin-bottom:10px;
+  }
+  .history-item{
+    background:var(--cream2);
+    border-radius:10px;
+    margin-bottom:8px;
+    overflow:hidden;
+  }
+  .history-summary{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 14px;
+    cursor:pointer;
+  }
+  .history-summary .hg-title{
+    font-weight:700;
+    font-size:13px;
+    color:var(--dark);
+  }
+  .history-summary .hg-winner{
+    font-size:11px;
+    color:var(--dark);
+    font-weight:700;
+    background:var(--accent);
+    padding:2px 8px;
+    border-radius:5px;
+  }
+  .history-detail{
+    display:none;
+    padding:0 14px 12px;
+    font-size:11.5px;
+    color:var(--textdark);
+    line-height:1.6;
+    border-top:1px solid var(--line);
+  }
+  .history-detail.open{display:block;}
+  .history-detail div.hd-row{
+    display:flex;
+    justify-content:space-between;
+  }
+  .history-remove{
+    font-size:10px;
+    color:var(--accent2);
+    text-decoration:underline;
+    background:none;
+    border:none;
+    cursor:pointer;
+    margin-top:8px;
+  }
+  .simple-history-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:var(--cream2);
+    border-radius:8px;
+    padding:9px 12px;
+    margin-bottom:7px;
+    font-size:12.5px;
+  }
+  .simple-history-row:nth-child(even){background:var(--cream);}
+  .simple-history-row .shr-winner{
+    font-weight:700;
+    color:var(--dark);
+  }
+  .simple-history-row .shr-date{
+    font-size:10.5px;
+    color:var(--textdark);
+    opacity:0.7;
+  }
+  .simple-history-row .shr-remove{
+    background:none;
+    border:none;
+    color:var(--accent2);
+    font-size:10px;
+    text-decoration:underline;
+    cursor:pointer;
+  }
+
+  /* ===== Zest box (shared, all games) ===== */
+  .zest-box{
+    margin-top:22px;
+  }
+  .zest-heading{
+    font-size:15px;
+    font-weight:800;
+    color:var(--dark);
+    margin:0 0 4px;
+    letter-spacing:0.5px;
+  }
+  .zest-sub{
+    font-size:11px;
+    color:var(--textdark);
+    opacity:0.7;
+    margin-bottom:10px;
+  }
+  .zest-input-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .zest-input-row input{
+    flex:1;
+    border:1.5px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:13px;
+    font-family:inherit;
+    background:var(--cream);
+    color:var(--textdark);
+  }
+  .zest-input-row input:focus{
+    outline:none;
+    border-color:var(--accent2);
+  }
+  .zest-add-btn{
+    background:var(--dark);
+    color:var(--accent);
+    border:none;
+    border-radius:8px;
+    padding:0 18px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .zest-add-btn:active{transform:scale(0.96);}
+  .zest-entry{
+    background:var(--cream2);
+    border-radius:9px;
+    padding:10px 12px;
+    margin-bottom:8px;
+  }
+  .zest-entry:nth-child(even){background:var(--cream);}
+  .zest-entry .zest-text{
+    font-size:13px;
+    color:var(--textdark);
+    display:block;
+    line-height:1.4;
+  }
+  .zest-entry .zest-meta{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:5px;
+  }
+  .zest-entry .zest-date{
+    font-size:10px;
+    color:var(--textdark);
+    opacity:0.65;
+  }
+  .zest-entry .zest-remove{
+    background:none;
+    border:none;
+    color:var(--accent2);
+    font-size:10px;
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .zest-empty{
+    font-size:12px;
+    color:var(--textdark);
+    opacity:0.6;
+    font-style:italic;
+  }
+
+  /* ===== Report of the Night button (home screen) ===== */
+  .report-btn-wrap{
+    text-align:center;
+    padding:4px 16px 6px;
+  }
+  .report-btn{
+    background:#2b1d0e;
+    color:#e8c468;
+    border:none;
+    padding:13px 26px;
+    border-radius:10px;
+    font-weight:800;
+    font-size:13px;
+    letter-spacing:0.5px;
+    cursor:pointer;
+  }
+  .report-btn:active{transform:scale(0.97);}
+
+  /* ===== Report of the Night screen ===== */
+  .champion-card{
+    background:var(--dark);
+    border:2px solid var(--accent);
+    border-radius:16px;
+    padding:22px;
+    text-align:center;
+    margin-top:16px;
+  }
+  .champion-label{
+    color:var(--accent2);
+    font-size:11px;
+    letter-spacing:2px;
+    font-weight:700;
+  }
+  .champion-name{
+    color:var(--accent);
+    font-size:34px;
+    font-weight:900;
+    letter-spacing:2px;
+    margin:6px 0;
+    font-family:Georgia,'Times New Roman',serif;
+  }
+  .champion-sub{
+    color:var(--cream);
+    font-size:12px;
+    opacity:0.85;
+  }
+  .report-game-card{
+    background:var(--cream2);
+    border-radius:12px;
+    padding:14px 16px;
+    margin-bottom:10px;
+  }
+  .rg-title{font-weight:800; font-size:14px; color:var(--dark); margin-bottom:6px;}
+  .rg-score-row{display:flex; justify-content:space-between; font-weight:700; font-size:13px; color:var(--textdark); margin-bottom:6px;}
+  .rg-bar{height:8px; border-radius:4px; background:var(--line); overflow:hidden; margin-bottom:6px;}
+  .rg-bar-fill{height:100%; background:var(--accent2);}
+  .rg-meta{font-size:11px; color:var(--textdark); opacity:0.75;}
+  .rg-empty{font-size:12px; color:var(--textdark); opacity:0.6; font-style:italic;}
+  .report-zest-entry{
+    background:var(--cream2);
+    border-radius:9px;
+    padding:10px 12px;
+    margin-bottom:8px;
+  }
+  .report-zest-entry:nth-child(even){background:var(--cream);}
+  .rz-game{
+    display:inline-block;
+    background:var(--accent);
+    color:var(--dark);
+    font-size:9.5px;
+    font-weight:800;
+    letter-spacing:0.5px;
+    padding:2px 7px;
+    border-radius:5px;
+    margin-bottom:5px;
+  }
+  .rz-text{display:block; font-size:13px; color:var(--textdark); margin:4px 0;}
+  .rz-date{font-size:10px; color:var(--textdark); opacity:0.6;}
+
+  /* ===== Footer / misc ===== */
+  footer{
+    text-align:center;
+    padding:20px 16px 4px;
+  }
+  .reset-btn{
+    background:transparent;
+    border:1.5px solid var(--dark);
+    color:var(--dark);
+    font-weight:700;
+    font-size:13px;
+    padding:10px 22px;
+    border-radius:8px;
+    cursor:pointer;
+    letter-spacing:0.5px;
+  }
+  .reset-btn:active{background:var(--dark); color:var(--cream);}
+  .footnote{
+    font-size:10.5px;
+    color:var(--textdark);
+    margin-top:14px;
+    opacity:0.75;
+  }
+  .storage-warning{
+    display:none;
+    background:#7a2b1f;
+    color:#fdf6e8;
+    font-size:11.5px;
+    padding:10px 14px;
+    border-radius:8px;
+    margin:12px 0;
+    text-align:center;
+    line-height:1.4;
+  }
+  .flash{animation: pop 0.28s ease;}
+  @keyframes pop{
+    0%{transform:scale(1);}
+    35%{transform:scale(1.15);}
+    100%{transform:scale(1);}
+  }
+
+  /* ===== Custom confirm modal ===== */
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:rgba(20,13,6,0.55);
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:#fdf6e8;
+    border-radius:14px;
+    padding:20px;
+    max-width:360px;
+    width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,0.3);
+  }
+  .modal-title{font-weight:800; font-size:16px; color:#2b1d0e; margin-bottom:8px;}
+  .modal-message{font-size:13px; color:#4a3a22; line-height:1.5; margin-bottom:18px;}
+  .modal-actions{display:flex; gap:10px;}
+  .modal-btn{
+    flex:1; border:none; border-radius:8px; padding:10px;
+    font-weight:700; font-size:13px; cursor:pointer;
+  }
+  .modal-cancel{background:transparent; border:1.5px solid #2b1d0e; color:#2b1d0e;}
+  .modal-confirm{background:#f4b840; color:#2b1d0e;}
+  .modal-confirm:active, .modal-cancel:active{transform:scale(0.97);}
+
+  /* ===== Per-theme overrides ===== */
+  body[data-theme="hive"]{
+    --dark:#2b1d0e; --accent:#f4b840; --accent2:#d98e2b;
+    --cream:#fdf6e8; --cream2:#fbead0; --line:#e0c48a; --textdark:#4a3a22;
+  }
+  body[data-theme="shobu"]{
+    --dark:#201c18; --accent:#c9a227; --accent2:#8a7550;
+    --cream:#f2ece2; --cream2:#e7ddcc; --line:#cbb99a; --textdark:#3a332b;
+  }
+  body[data-theme="onitama"]{
+    --dark:#1c1712; --accent:#e8a0b4; --accent2:#c1272d;
+    --cream:#f7f0e6; --cream2:#efe3d1; --line:#d8c7a1; --textdark:#3b2f22;
+  }
+  body[data-theme="duke"]{
+    --dark:#232120; --accent:#c9a659; --accent2:#8c1c2b;
+    --cream:#efe6d3; --cream2:#e4d7b8; --line:#c9b384; --textdark:#3a2f22;
+  }
+  body[data-theme="warchest"]{
+    --dark:#201a12; --accent:#d9a441; --accent2:#7a1f1f;
+    --cream:#efe9df; --cream2:#e3dccc; --line:#c9b98a; --textdark:#3a3226;
+  }
+  body[data-theme="report"]{
+    --dark:#141110; --accent:#e8c468; --accent2:#b08d3f;
+    --cream:#fdf8ec; --cream2:#f5ecd6; --line:#d9c48a; --textdark:#3a2f1a;
+  }
+</style>
+</head>
+<body data-theme="home">
+
+<!-- ============ HOME SCREEN ============ -->
+<div class="screen active" id="screen-home">
+  <div class="home-intro">
+    <h1>GAME NIGHT TRACKER</h1>
+    <p>Pick a game to open its tracker</p>
+  </div>
+  <div class="tile-grid">
+    <button class="game-tile tile-hive" onclick="showScreen('hive')">
+      <div>
+        <div class="tile-icon">&#x2B22;</div>
+        <div class="tile-name">Hive</div>
+        <div class="tile-sub">Bugs, pins &amp; drinking rules</div>
+      </div>
+      <div class="tile-stats" id="home-hive-stats">Max 0 &ndash; Dom 0</div>
+    </button>
+    <button class="game-tile tile-shobu" onclick="showScreen('shobu')">
+      <div>
+        <div class="tile-icon">&#x25CF;&#x25CB;</div>
+        <div class="tile-name">Shobu</div>
+        <div class="tile-sub">Push stones off the board</div>
+      </div>
+      <div class="tile-stats" id="home-shobu-stats">Max 0 &ndash; Dom 0</div>
+    </button>
+    <button class="game-tile tile-onitama" onclick="showScreen('onitama')">
+      <div>
+        <div class="tile-icon">&#x26E9;</div>
+        <div class="tile-name">Onitama</div>
+        <div class="tile-sub">Martial arts move cards</div>
+      </div>
+      <div class="tile-stats" id="home-onitama-stats">Max 0 &ndash; Dom 0</div>
+    </button>
+    <button class="game-tile tile-duke" onclick="showScreen('duke')">
+      <div>
+        <div class="tile-icon">&#x1F3F0;</div>
+        <div class="tile-name">The Duke</div>
+        <div class="tile-sub">Levy. Maneuver. Conquer.</div>
+      </div>
+      <div class="tile-stats" id="home-duke-stats">Max 0 &ndash; Dom 0</div>
+    </button>
+    <button class="game-tile tile-warchest" onclick="showScreen('warchest')">
+      <div>
+        <div class="tile-icon">&#x2694;</div>
+        <div class="tile-name">Warchest</div>
+        <div class="tile-sub">Bag-build your army</div>
+      </div>
+      <div class="tile-stats" id="home-warchest-stats">Max 0 &ndash; Dom 0</div>
+    </button>
+  </div>
+  <div class="report-btn-wrap">
+    <button class="report-btn" onclick="confirmNightReport()">Report of the Night</button>
+  </div>
+  <p class="footnote" style="text-align:center;">One shelf, five rivalries. Tap a game to keep score.</p>
+</div>
+
+<!-- ============ HIVE SCREEN ============ -->
+<div class="screen" id="screen-hive">
+  <header>
+    <button class="back-btn" onclick="showScreen('home')">&larr; Games</button>
+    <h1>HIVE</h1>
+    <h2>DRINKING GAME TRACKER</h2>
+    <p class="tagline">tap a name every time the rule fires</p>
+  </header>
+
+  <div class="container">
+    <div class="storage-warning" id="hive-storage-warning">
+      Couldn't save to persistent storage right now &mdash; this game will still track fine, but a refresh may lose your history.
+    </div>
+
+    <div class="wins-board">
+      <div class="wins-card">
+        <div class="name">MAX</div>
+        <div class="count" id="hive-max-wins">0</div>
+        <div class="label">Wins</div>
+      </div>
+      <div class="wins-card">
+        <div class="name">DOM</div>
+        <div class="count" id="hive-dom-wins">0</div>
+        <div class="label">Wins</div>
+      </div>
+    </div>
+
+    <div class="game-tag" id="hive-game-tag">GAME 1 IN PROGRESS</div>
+
+    <div class="scoreboard">
+      <div class="score-card">
+        <div class="name">MAX</div>
+        <div class="count" id="hive-max-total">0</div>
+        <div class="label">Drinks this game</div>
+      </div>
+      <div class="score-card">
+        <div class="name">DOM</div>
+        <div class="count" id="hive-dom-total">0</div>
+        <div class="label">Drinks this game</div>
+      </div>
+    </div>
+
+    <div id="hive-rules-container"></div>
+
+    <div class="endgame-box">
+      <div class="eg-title">DECLARE THE WINNER TO END THIS GAME</div>
+      <div class="endgame-controls">
+        <button class="win-btn" onclick="hiveEndGame('Max')">MAX WINS</button>
+        <button class="win-btn" onclick="hiveEndGame('Dom')">DOM WINS</button>
+      </div>
+    </div>
+
+    <div class="history-heading">Game History</div>
+    <div id="hive-history-container"></div>
+
+    <div class="zest-box">
+      <div class="zest-heading">Hive Zest</div>
+      <div class="zest-sub">Log the pins, the Pillbug throws, the moments worth remembering.</div>
+      <div class="zest-input-row">
+        <input type="text" id="hive-zest-input" placeholder="e.g. Dom pillbugged my queen into a death trap on turn 4">
+        <button class="zest-add-btn" onclick="addZest('hive')">Add</button>
+      </div>
+      <div id="hive-zest-list"></div>
+    </div>
+
+    <footer>
+      <button class="reset-btn" onclick="hiveResetEverything()">Reset Hive Data</button>
+      <p class="footnote">One Hive, one game, several regrets. Drink water between rounds.</p>
+    </footer>
+  </div>
+</div>
+
+<!-- ============ SIMPLE GAME SCREENS (Shobu, Onitama, Duke, Warchest) ============ -->
+<div class="screen" id="screen-shobu">
+  <header>
+    <button class="back-btn" onclick="showScreen('home')">&larr; Games</button>
+    <h1>SHOBU</h1>
+    <h2>WIN / LOSS TRACKER</h2>
+    <p class="tagline">push all four stones off one board to win</p>
+  </header>
+  <div class="container" id="shobu-body"></div>
+</div>
+
+<div class="screen" id="screen-onitama">
+  <header>
+    <button class="back-btn" onclick="showScreen('home')">&larr; Games</button>
+    <h1>ONITAMA</h1>
+    <h2>WIN / LOSS TRACKER</h2>
+    <p class="tagline">capture the master, or walk into the temple arch</p>
+  </header>
+  <div class="container" id="onitama-body"></div>
+</div>
+
+<div class="screen" id="screen-duke">
+  <header>
+    <button class="back-btn" onclick="showScreen('home')">&larr; Games</button>
+    <h1>THE DUKE</h1>
+    <h2>WIN / LOSS TRACKER</h2>
+    <p class="tagline">levy. maneuver. conquer.</p>
+  </header>
+  <div class="container" id="duke-body"></div>
+</div>
+
+<div class="screen" id="screen-warchest">
+  <header>
+    <button class="back-btn" onclick="showScreen('home')">&larr; Games</button>
+    <h1>WARCHEST</h1>
+    <h2>WIN / LOSS TRACKER</h2>
+    <p class="tagline">place your last control marker to win</p>
+  </header>
+  <div class="container" id="warchest-body"></div>
+</div>
+
+<!-- ============ REPORT OF THE NIGHT SCREEN ============ -->
+<div class="screen" id="screen-report">
+  <header>
+    <h1>GAME NIGHT REPORT</h1>
+    <p class="tagline" id="report-date"></p>
+  </header>
+  <div class="container" id="report-body"></div>
+</div>
+
+<!-- ============ SHARED CONFIRM MODAL ============ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-message" id="modal-message"></div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-cancel" id="modal-cancel">Cancel</button>
+      <button class="modal-btn modal-confirm" id="modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   STORAGE LAYER
+   Works two ways:
+   1. Inside Claude.ai -> window.storage exists -> saves to your Claude account.
+   2. Downloaded and opened in a normal browser -> window.storage does not
+      exist -> falls back to the browser's own localStorage on that device.
+   ========================================================================= */
+const usingClaudeStorage = (typeof window.storage !== "undefined");
+
+async function storageSet(key, value){
+  if(usingClaudeStorage){
+    try{
+      const result = await window.storage.set(key, value, false);
+      return !!result;
+    }catch(e){ return false; }
+  } else {
+    try{ localStorage.setItem(key, value); return true; }
+    catch(e){ return false; }
+  }
+}
+
+async function storageGet(key){
+  if(usingClaudeStorage){
+    try{
+      const result = await window.storage.get(key, false);
+      return result ? result.value : null;
+    }catch(e){ return null; }
+  } else {
+    try{ return localStorage.getItem(key); }
+    catch(e){ return null; }
+  }
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function formatDate(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined,{month:"short",day:"numeric"}) + " " +
+           d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+  }catch(e){ return ""; }
+}
+
+/* =========================================================================
+   SHARED CONFIRM MODAL
+   ========================================================================= */
+let modalConfirmCallback = null;
+
+function showModal(title, message, onConfirm){
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-message").innerHTML = message;
+  modalConfirmCallback = onConfirm;
+  document.getElementById("modal-overlay").classList.add("open");
+}
+function hideModal(){
+  document.getElementById("modal-overlay").classList.remove("open");
+  modalConfirmCallback = null;
+}
+document.getElementById("modal-cancel").addEventListener("click", hideModal);
+document.getElementById("modal-confirm").addEventListener("click", ()=>{
+  const cb = modalConfirmCallback;
+  hideModal();
+  if(cb) cb();
+});
+document.getElementById("modal-overlay").addEventListener("click", (e)=>{
+  if(e.target.id === "modal-overlay") hideModal();
+});
+
+/* =========================================================================
+   SCREEN NAVIGATION
+   ========================================================================= */
+function showScreen(name){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(`screen-${name}`).classList.add("active");
+  document.body.setAttribute("data-theme", name);
+  window.scrollTo(0,0);
+  updateHomeStats();
+}
+
+/* =========================================================================
+   GENERIC ZEST COMPONENT (used by Hive + all simple games)
+   Each game's app object has a `zest` array: [{id, timestamp, text}]
+   ========================================================================= */
+function getAppFor(gameId){
+  return gameId === "hive" ? hiveApp : simpleApps[gameId];
+}
+function saveAppFor(gameId){
+  return gameId === "hive" ? hiveSaveApp() : saveSimpleApp(gameId);
+}
+
+function renderZest(gameId){
+  const app = getAppFor(gameId);
+  const container = document.getElementById(`${gameId}-zest-list`);
+  if(!container) return;
+  if(!app.zest || app.zest.length === 0){
+    container.innerHTML = `<div class="zest-empty">No entries yet. Log a cool win, a wild comeback, a rage quit...</div>`;
+    return;
+  }
+  const ordered = [...app.zest].reverse();
+  container.innerHTML = ordered.map(e => `
+    <div class="zest-entry">
+      <span class="zest-text">${escapeHtml(e.text)}</span>
+      <div class="zest-meta">
+        <span class="zest-date">${formatDate(e.timestamp)}</span>
+        <button class="zest-remove" data-zest-id="${e.id}" data-game="${gameId}">remove</button>
+      </div>
+    </div>
+  `).join("");
+  container.querySelectorAll(".zest-remove").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      removeZest(btn.getAttribute("data-game"), Number(btn.getAttribute("data-zest-id")));
+    });
+  });
+}
+
+function addZest(gameId){
+  const input = document.getElementById(`${gameId}-zest-input`);
+  const text = input.value.trim();
+  if(!text) return;
+  const app = getAppFor(gameId);
+  if(!app.zest) app.zest = [];
+  app.zest.push({id: Date.now(), timestamp: new Date().toISOString(), text});
+  input.value = "";
+  renderZest(gameId);
+  saveAppFor(gameId);
+}
+
+function removeZest(gameId, id){
+  const app = getAppFor(gameId);
+  app.zest = (app.zest || []).filter(e => e.id !== id);
+  renderZest(gameId);
+  saveAppFor(gameId);
+}
+
+// allow pressing Enter in a zest input to add the entry
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Enter" && e.target && e.target.id && e.target.id.endsWith("-zest-input")){
+    const gameId = e.target.id.replace("-zest-input","");
+    addZest(gameId);
+  }
+});
+
+/* =========================================================================
+   HIVE ENGINE (rules, drinks, wins, history, zest)
+   ========================================================================= */
+const hiveRules = [
+  {id:"queen_first", num:1, title:"First to Play the Queen", desc:"Whoever places their Queen Bee first drinks.", tag:"1 DRINK", sub:"Aggression tax", mode:"players", weight:1},
+  {id:"beetlemania", num:2, title:"Beetlemania", desc:"A Beetle climbs on top of another Beetle. That Beetle's owner drinks.", tag:"1 DRINK", sub:"Pinned & punished", mode:"players", weight:1},
+  {id:"coward", num:3, title:"Coward Move", desc:"A Beetle lands directly on the opponent's Queen. The Beetle's owner drinks.", tag:"1 DRINK", sub:"Sneaky, not brave", mode:"players", weight:1},
+  {id:"hopper", num:4, title:"Grasshopper Long Jump", desc:"A Grasshopper jumps over 4+ pieces. Tap whoever DRINKS (the other player).", tag:"1 DRINK", sub:"That's a long hop", mode:"players", weight:1},
+  {id:"deathtrap", num:5, title:"Death Trap", desc:"A Pillbug throws the opponent's Queen into a bad spot. Queen's owner finishes their drink.", tag:"FINISH DRINK", sub:"No escape", mode:"players", weight:1},
+  {id:"midgame", num:6, title:"Midgame Toast", desc:"All 22 pieces have been played. Both players drink.", tag:"BOTH DRINK", sub:"The board is full", mode:"both", weight:1},
+  {id:"takeback", num:7, title:"Take-Back Attempt", desc:"Asking costs 1 drink. An actual take-back costs 2.", tag:"1 OR 2 DRINKS", sub:"Commit to your moves", mode:"askback"},
+  {id:"illegal", num:8, title:"Illegal Move Caught", desc:"A One Hive Rule violation gets called out. Drink.", tag:"1 DRINK", sub:"Read the rulebook", mode:"players", weight:1},
+  {id:"gameover", num:9, title:"Queen Fully Surrounded", desc:"Game over. The loser finishes their drink.", tag:"FINISH DRINK", sub:"GG", mode:"players", weight:1},
+];
+
+function hiveFreshState(){
+  const s = {};
+  hiveRules.forEach(r=>{
+    if(r.mode==="both"){ s[r.id] = {both:0}; }
+    else if(r.mode==="askback"){ s[r.id] = {max_ask:0, max_back:0, dom_ask:0, dom_back:0}; }
+    else { s[r.id] = {max:0, dom:0}; }
+  });
+  return s;
+}
+
+let hiveApp = {
+  gameNumber: 1,
+  maxWins: 0,
+  domWins: 0,
+  current: hiveFreshState(),
+  history: [],
+  zest: []
+};
+
+const HIVE_STORAGE_KEY = "hive-tracker-app";
+let hiveStorageAvailable = true;
+
+async function hiveSaveApp(){
+  if(!hiveStorageAvailable) return;
+  const ok = await storageSet(HIVE_STORAGE_KEY, JSON.stringify(hiveApp));
+  if(!ok){
+    hiveStorageAvailable = false;
+    const el = document.getElementById("hive-storage-warning");
+    if(el) el.style.display = "block";
+  }
+}
+
+async function hiveLoadApp(){
+  const raw = await storageGet(HIVE_STORAGE_KEY);
+  if(raw){
+    try{
+      const parsed = JSON.parse(raw);
+      if(parsed && parsed.current){
+        hiveApp = parsed;
+        if(!hiveApp.zest) hiveApp.zest = [];
+      }
+    }catch(e){ /* start fresh */ }
+  }
+}
+
+function hiveDrinksForRule(r, s){
+  if(r.mode==="both"){ return {max: s.both*r.weight, dom: s.both*r.weight}; }
+  else if(r.mode==="askback"){ return {max: s.max_ask*1 + s.max_back*2, dom: s.dom_ask*1 + s.dom_back*2}; }
+  else { return {max: s.max*r.weight, dom: s.dom*r.weight}; }
+}
+
+function hiveComputeTotals(){
+  let maxTotal=0, domTotal=0;
+  hiveRules.forEach(r=>{
+    const d = hiveDrinksForRule(r, hiveApp.current[r.id]);
+    maxTotal += d.max; domTotal += d.dom;
+  });
+  document.getElementById("hive-max-total").textContent = maxTotal;
+  document.getElementById("hive-dom-total").textContent = domTotal;
+  return {maxTotal, domTotal};
+}
+
+function flashEl(el){
+  if(!el) return;
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+}
+
+function hiveBump(ruleId, key, delta, badgeEl){
+  const s = hiveApp.current[ruleId];
+  s[key] = Math.max(0, (s[key]||0) + delta);
+  if(badgeEl) badgeEl.textContent = s[key];
+  if(delta>0) flashEl(badgeEl);
+  hiveComputeTotals();
+  hiveSaveApp();
+}
+
+function hiveRenderTopStats(){
+  document.getElementById("hive-max-wins").textContent = hiveApp.maxWins;
+  document.getElementById("hive-dom-wins").textContent = hiveApp.domWins;
+  document.getElementById("hive-game-tag").textContent = `GAME ${hiveApp.gameNumber} IN PROGRESS`;
+}
+
+function hiveRenderRules(){
+  const container = document.getElementById("hive-rules-container");
+  container.innerHTML = "";
+  hiveRules.forEach(r=>{
+    const s = hiveApp.current[r.id];
+    const card = document.createElement("div");
+    card.className = "rule-card";
+    let controlsHtml = "";
+    if(r.mode === "players"){
+      controlsHtml = `
+        <div class="controls">
+          <button class="player-btn" data-rule="${r.id}" data-key="max"><span class="pname">MAX</span><span class="pcount" id="hive-${r.id}-max">${s.max}</span></button>
+          <button class="player-btn" data-rule="${r.id}" data-key="dom"><span class="pname">DOM</span><span class="pcount" id="hive-${r.id}-dom">${s.dom}</span></button>
+        </div>
+        <div class="undo-row">
+          <button class="undo-link" data-rule="${r.id}" data-key="max">undo Max</button>
+          <button class="undo-link" data-rule="${r.id}" data-key="dom">undo Dom</button>
+        </div>`;
+    } else if(r.mode === "both"){
+      controlsHtml = `
+        <div class="controls">
+          <button class="special-btn" data-rule="${r.id}" data-key="both"><span class="pname">MAX &amp; DOM BOTH DRINK</span><span class="pcount" id="hive-${r.id}-both">${s.both}</span></button>
+        </div>
+        <div class="undo-row"><button class="undo-link" data-rule="${r.id}" data-key="both">undo</button></div>`;
+    } else if(r.mode === "askback"){
+      controlsHtml = `
+        <div class="controls">
+          <button class="player-btn" data-rule="${r.id}" data-key="max_ask"><span class="pname">MAX asked</span><span class="pcount" id="hive-${r.id}-max_ask">${s.max_ask}</span></button>
+          <button class="player-btn" data-rule="${r.id}" data-key="dom_ask"><span class="pname">DOM asked</span><span class="pcount" id="hive-${r.id}-dom_ask">${s.dom_ask}</span></button>
+        </div>
+        <div class="controls" style="margin-top:6px;">
+          <button class="player-btn" data-rule="${r.id}" data-key="max_back" style="background:#5a3a12;"><span class="pname">MAX took back</span><span class="pcount" id="hive-${r.id}-max_back">${s.max_back}</span></button>
+          <button class="player-btn" data-rule="${r.id}" data-key="dom_back" style="background:#5a3a12;"><span class="pname">DOM took back</span><span class="pcount" id="hive-${r.id}-dom_back">${s.dom_back}</span></button>
+        </div>
+        <div class="undo-row">
+          <button class="undo-link" data-rule="${r.id}" data-key="max_ask">undo Max ask</button>
+          <button class="undo-link" data-rule="${r.id}" data-key="dom_ask">undo Dom ask</button>
+          <button class="undo-link" data-rule="${r.id}" data-key="max_back">undo Max back</button>
+          <button class="undo-link" data-rule="${r.id}" data-key="dom_back">undo Dom back</button>
+        </div>`;
+    }
+    card.innerHTML = `
+      <div class="rule-top">
+        <div class="hex">${r.num}</div>
+        <div class="rule-text">
+          <p class="rule-title">${r.title}</p>
+          <p class="rule-desc">${r.desc}</p>
+          <span class="tag">${r.tag}</span>
+        </div>
+      </div>
+      ${controlsHtml}`;
+    container.appendChild(card);
+  });
+
+  container.querySelectorAll(".player-btn, .special-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const ruleId = btn.getAttribute("data-rule");
+      const key = btn.getAttribute("data-key");
+      const badge = document.getElementById(`hive-${ruleId}-${key}`);
+      hiveBump(ruleId, key, 1, badge);
+    });
+  });
+  container.querySelectorAll(".undo-link").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const ruleId = btn.getAttribute("data-rule");
+      const key = btn.getAttribute("data-key");
+      const badge = document.getElementById(`hive-${ruleId}-${key}`);
+      hiveBump(ruleId, key, -1, badge);
+    });
+  });
+}
+
+function hiveRenderHistory(){
+  const container = document.getElementById("hive-history-container");
+  container.innerHTML = "";
+  if(hiveApp.history.length === 0){
+    container.innerHTML = `<div class="history-empty">No completed games yet. Finish a game below to log it here.</div>`;
+    return;
+  }
+  const ordered = [...hiveApp.history].reverse();
+  ordered.forEach(g=>{
+    const item = document.createElement("div");
+    item.className = "history-item";
+    let detailRows = "";
+    hiveRules.forEach(r=>{
+      const s = g.state[r.id];
+      let occLabel = "";
+      if(r.mode === "both"){
+        if(s.both > 0) occLabel = `x${s.both}`;
+      } else if(r.mode === "askback"){
+        const parts = [];
+        if(s.max_ask) parts.push(`Max asked x${s.max_ask}`);
+        if(s.dom_ask) parts.push(`Dom asked x${s.dom_ask}`);
+        if(s.max_back) parts.push(`Max took back x${s.max_back}`);
+        if(s.dom_back) parts.push(`Dom took back x${s.dom_back}`);
+        occLabel = parts.join(", ");
+      } else {
+        const parts = [];
+        if(s.max) parts.push(`Max x${s.max}`);
+        if(s.dom) parts.push(`Dom x${s.dom}`);
+        occLabel = parts.join(", ");
+      }
+      if(occLabel) detailRows += `<div class="hd-row"><span>${r.title}</span><span>${occLabel}</span></div>`;
+    });
+    if(!detailRows) detailRows = `<div class="hd-row"><span>No rules triggered this game.</span></div>`;
+    detailRows += `<div class="hd-row" style="margin-top:6px;font-weight:700;"><span>Total drinks</span><span>Max ${g.maxDrinks} &nbsp;/&nbsp; Dom ${g.domDrinks}</span></div>`;
+
+    item.innerHTML = `
+      <div class="history-summary" data-toggle="${g.gameNumber}">
+        <span class="hg-title">Game ${g.gameNumber}</span>
+        <span class="hg-winner">${g.winner} won</span>
+      </div>
+      <div class="history-detail" id="hive-hist-detail-${g.gameNumber}">
+        ${detailRows}
+        <button class="history-remove" data-remove="${g.gameNumber}">remove this game</button>
+      </div>`;
+    container.appendChild(item);
+  });
+
+  container.querySelectorAll(".history-summary").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      document.getElementById(`hive-hist-detail-${el.getAttribute("data-toggle")}`).classList.toggle("open");
+    });
+  });
+  container.querySelectorAll(".history-remove").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const gameNum = parseInt(btn.getAttribute("data-remove"), 10);
+      showModal(`Remove Game ${gameNum}?`, "This deletes that game's record and un-counts its win.", () => {
+        const idx = hiveApp.history.findIndex(g=>g.gameNumber === gameNum);
+        if(idx > -1){
+          const removed = hiveApp.history[idx];
+          if(removed.winner === "Max") hiveApp.maxWins = Math.max(0, hiveApp.maxWins - 1);
+          if(removed.winner === "Dom") hiveApp.domWins = Math.max(0, hiveApp.domWins - 1);
+          hiveApp.history.splice(idx, 1);
+          hiveRenderTopStats();
+          hiveRenderHistory();
+          hiveSaveApp();
+          updateHomeStats();
+        }
+      });
+    });
+  });
+}
+
+function hiveEndGame(winner){
+  const totals = hiveComputeTotals();
+  showModal(
+    `End Game ${hiveApp.gameNumber}?`,
+    `${winner} wins.<br>Max: ${totals.maxTotal} drinks &nbsp;/&nbsp; Dom: ${totals.domTotal} drinks`,
+    () => {
+      hiveApp.history.push({
+        gameNumber: hiveApp.gameNumber,
+        winner: winner,
+        state: JSON.parse(JSON.stringify(hiveApp.current)),
+        maxDrinks: totals.maxTotal,
+        domDrinks: totals.domTotal
+      });
+      if(winner === "Max") hiveApp.maxWins += 1;
+      if(winner === "Dom") hiveApp.domWins += 1;
+      hiveApp.gameNumber += 1;
+      hiveApp.current = hiveFreshState();
+      hiveRenderTopStats();
+      hiveRenderRules();
+      hiveComputeTotals();
+      hiveRenderHistory();
+      hiveSaveApp();
+      updateHomeStats();
+    }
+  );
+}
+
+function hiveResetEverything(){
+  showModal("Reset Hive data?", "This clears wins, the current game, history, and zest notes for Hive only. This can't be undone.", () => {
+    hiveApp = { gameNumber: 1, maxWins: 0, domWins: 0, current: hiveFreshState(), history: [], zest: [] };
+    hiveRenderTopStats();
+    hiveRenderRules();
+    hiveComputeTotals();
+    hiveRenderHistory();
+    renderZest("hive");
+    hiveSaveApp();
+    updateHomeStats();
+  });
+}
+
+async function initHive(){
+  await hiveLoadApp();
+  hiveRenderTopStats();
+  hiveRenderRules();
+  hiveComputeTotals();
+  hiveRenderHistory();
+  renderZest("hive");
+  const probe = await storageSet(HIVE_STORAGE_KEY, JSON.stringify(hiveApp));
+  if(!probe){
+    hiveStorageAvailable = false;
+    const el = document.getElementById("hive-storage-warning");
+    if(el) el.style.display = "block";
+  }
+}
+
+/* =========================================================================
+   SIMPLE GAME ENGINE (Shobu, Onitama, Duke, Warchest)
+   Win/loss tracking only, plus zest notes. No drink rules yet.
+   ========================================================================= */
+const simpleGames = {
+  shobu:     { title:"Shobu",     winCue:"pushed all 4 stones off a board" },
+  onitama:   { title:"Onitama",   winCue:"captured the Master or reached the Temple Arch" },
+  duke:      { title:"The Duke",  winCue:"captured the opponent's Duke" },
+  warchest:  { title:"Warchest",  winCue:"placed their last control marker" }
+};
+
+let simpleApps = {}; // gameId -> {maxWins, domWins, history:[], zest:[]}
+
+function simpleFreshApp(){
+  return { maxWins: 0, domWins: 0, history: [], zest: [] };
+}
+
+function simpleStorageKey(gameId){
+  return `game-tracker-${gameId}`;
+}
+
+async function saveSimpleApp(gameId){
+  await storageSet(simpleStorageKey(gameId), JSON.stringify(simpleApps[gameId]));
+}
+
+async function loadSimpleApp(gameId){
+  const raw = await storageGet(simpleStorageKey(gameId));
+  if(raw){
+    try{
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed.maxWins === "number"){
+        simpleApps[gameId] = parsed;
+        if(!simpleApps[gameId].zest) simpleApps[gameId].zest = [];
+        if(!simpleApps[gameId].history) simpleApps[gameId].history = [];
+        return;
+      }
+    }catch(e){ /* fall through to fresh */ }
+  }
+  simpleApps[gameId] = simpleFreshApp();
+}
+
+function buildSimpleScreen(gameId){
+  const info = simpleGames[gameId];
+  const body = document.getElementById(`${gameId}-body`);
+  body.innerHTML = `
+    <div class="wins-board">
+      <div class="wins-card">
+        <div class="name">MAX</div>
+        <div class="count" id="${gameId}-max-wins">0</div>
+        <div class="label">Wins</div>
+      </div>
+      <div class="wins-card">
+        <div class="name">DOM</div>
+        <div class="count" id="${gameId}-dom-wins">0</div>
+        <div class="label">Wins</div>
+      </div>
+    </div>
+    <div class="losses-row">
+      <div>Max losses: <span id="${gameId}-max-losses">0</span></div>
+      <div>Dom losses: <span id="${gameId}-dom-losses">0</span></div>
+    </div>
+
+    <div class="endgame-box">
+      <div class="eg-title">WHO WON THIS GAME OF ${info.title.toUpperCase()}?</div>
+      <div class="endgame-controls">
+        <button class="win-btn" data-win="Max">MAX WON</button>
+        <button class="win-btn" data-win="Dom">DOM WON</button>
+      </div>
+    </div>
+
+    <div class="history-heading">Game History</div>
+    <div id="${gameId}-history"></div>
+
+    <div class="zest-box">
+      <div class="zest-heading">${info.title} Zest</div>
+      <div class="zest-sub">Log a cool win, a wild comeback, whatever's worth remembering.</div>
+      <div class="zest-input-row">
+        <input type="text" id="${gameId}-zest-input" placeholder="e.g. Max ${info.winCue} on the very last move">
+        <button class="zest-add-btn" onclick="addZest('${gameId}')">Add</button>
+      </div>
+      <div id="${gameId}-zest-list"></div>
+    </div>
+
+    <footer>
+      <button class="reset-btn" data-reset="${gameId}">Reset ${info.title} Data</button>
+      <p class="footnote">Track the rivalry, not just the rules.</p>
+    </footer>
+  `;
+
+  body.querySelectorAll(".win-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=> recordSimpleWin(gameId, btn.getAttribute("data-win")));
+  });
+  body.querySelector(".reset-btn").addEventListener("click", ()=>{
+    showModal(`Reset ${info.title} data?`, "This clears wins, history, and zest notes for this game only. This can't be undone.", () => {
+      simpleApps[gameId] = simpleFreshApp();
+      renderSimpleScreen(gameId);
+      saveSimpleApp(gameId);
+      updateHomeStats();
+    });
+  });
+}
+
+function renderSimpleScreen(gameId){
+  const app = simpleApps[gameId];
+  document.getElementById(`${gameId}-max-wins`).textContent = app.maxWins;
+  document.getElementById(`${gameId}-dom-wins`).textContent = app.domWins;
+  document.getElementById(`${gameId}-max-losses`).textContent = app.domWins;
+  document.getElementById(`${gameId}-dom-losses`).textContent = app.maxWins;
+  renderSimpleHistory(gameId);
+  renderZest(gameId);
+}
+
+function renderSimpleHistory(gameId){
+  const app = simpleApps[gameId];
+  const container = document.getElementById(`${gameId}-history`);
+  if(app.history.length === 0){
+    container.innerHTML = `<div class="history-empty">No games logged yet.</div>`;
+    return;
+  }
+  const ordered = [...app.history].reverse();
+  container.innerHTML = ordered.map((g, idx) => `
+    <div class="simple-history-row">
+      <div>
+        <span class="shr-winner">${g.winner} won</span> &nbsp;
+        <span class="shr-date">${formatDate(g.timestamp)}</span>
+      </div>
+      <button class="shr-remove" data-remove-id="${g.id}">remove</button>
+    </div>
+  `).join("");
+  container.querySelectorAll(".shr-remove").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = Number(btn.getAttribute("data-remove-id"));
+      showModal("Remove this game?", "This un-counts the win and deletes the entry.", () => {
+        const idx = app.history.findIndex(g=>g.id === id);
+        if(idx > -1){
+          const removed = app.history[idx];
+          if(removed.winner === "Max") app.maxWins = Math.max(0, app.maxWins - 1);
+          if(removed.winner === "Dom") app.domWins = Math.max(0, app.domWins - 1);
+          app.history.splice(idx,1);
+          renderSimpleScreen(gameId);
+          saveSimpleApp(gameId);
+          updateHomeStats();
+        }
+      });
+    });
+  });
+}
+
+function recordSimpleWin(gameId, winner){
+  const app = simpleApps[gameId];
+  app.history.push({id: Date.now(), timestamp: new Date().toISOString(), winner});
+  if(winner === "Max") app.maxWins += 1; else app.domWins += 1;
+  renderSimpleScreen(gameId);
+  saveSimpleApp(gameId);
+  updateHomeStats();
+}
+
+/* =========================================================================
+   HOME SCREEN STATS
+   ========================================================================= */
+function updateHomeStats(){
+  const hiveEl = document.getElementById("home-hive-stats");
+  if(hiveEl) hiveEl.textContent = `Max ${hiveApp.maxWins} \u2013 Dom ${hiveApp.domWins}`;
+  Object.keys(simpleGames).forEach(gameId=>{
+    const el = document.getElementById(`home-${gameId}-stats`);
+    const app = simpleApps[gameId];
+    if(el && app) el.textContent = `Max ${app.maxWins} \u2013 Dom ${app.domWins}`;
+  });
+}
+
+/* =========================================================================
+   REPORT OF THE NIGHT
+   Snapshots all five games' stats + zest notes, renders a stylised recap,
+   then resets every tracker for the next game night.
+   ========================================================================= */
+function confirmNightReport(){
+  showModal(
+    "Generate Report of the Night?",
+    "This creates a summary of tonight's results across all five games, then resets every tracker's wins, history, and zest notes for a fresh start next time. This can't be undone.",
+    () => runNightReport()
+  );
+}
+
+function buildNightSnapshot(){
+  const now = new Date();
+  const dateStr = now.toLocaleDateString(undefined, {weekday:"long", year:"numeric", month:"long", day:"numeric"});
+
+  const games = [];
+
+  const hiveGamesPlayed = hiveApp.history.length;
+  const hiveMaxDrinks = hiveApp.history.reduce((sum,g)=>sum+g.maxDrinks, 0);
+  const hiveDomDrinks = hiveApp.history.reduce((sum,g)=>sum+g.domDrinks, 0);
+  games.push({
+    id: "hive",
+    title: "Hive",
+    maxWins: hiveApp.maxWins,
+    domWins: hiveApp.domWins,
+    gamesPlayed: hiveGamesPlayed,
+    extra: hiveGamesPlayed > 0 ? `Max drank ${hiveMaxDrinks} \u2022 Dom drank ${hiveDomDrinks}` : null,
+    zest: hiveApp.zest || []
+  });
+
+  Object.keys(simpleGames).forEach(gameId=>{
+    const app = simpleApps[gameId];
+    games.push({
+      id: gameId,
+      title: simpleGames[gameId].title,
+      maxWins: app.maxWins,
+      domWins: app.domWins,
+      gamesPlayed: app.history.length,
+      extra: null,
+      zest: app.zest || []
+    });
+  });
+
+  const totalGames = games.reduce((s,g)=>s+g.gamesPlayed, 0);
+  const totalMaxWins = games.reduce((s,g)=>s+g.maxWins, 0);
+  const totalDomWins = games.reduce((s,g)=>s+g.domWins, 0);
+
+  let allZest = [];
+  games.forEach(g=>{
+    g.zest.forEach(z=> allZest.push({game: g.title, text: z.text, timestamp: z.timestamp}));
+  });
+  allZest.sort((a,b)=> new Date(a.timestamp) - new Date(b.timestamp));
+
+  return {dateStr, games, totalGames, totalMaxWins, totalDomWins, allZest};
+}
+
+function renderNightReport(snapshot){
+  document.getElementById("report-date").textContent = snapshot.dateStr;
+
+  let champion, championSub;
+  if(snapshot.totalGames === 0){
+    champion = "NO GAMES YET";
+    championSub = "Play something before the next report.";
+  } else if(snapshot.totalMaxWins === snapshot.totalDomWins){
+    champion = "IT'S A TIE";
+    championSub = `${snapshot.totalMaxWins} wins apiece across ${snapshot.totalGames} game${snapshot.totalGames===1?"":"s"}`;
+  } else {
+    champion = snapshot.totalMaxWins > snapshot.totalDomWins ? "MAX" : "DOM";
+    const hi = Math.max(snapshot.totalMaxWins, snapshot.totalDomWins);
+    const lo = Math.min(snapshot.totalMaxWins, snapshot.totalDomWins);
+    championSub = `${hi} wins to ${lo} across ${snapshot.totalGames} game${snapshot.totalGames===1?"":"s"}`;
+  }
+
+  const gamesHtml = snapshot.games.map(g=>{
+    if(g.gamesPlayed === 0){
+      return `
+        <div class="report-game-card">
+          <div class="rg-title">${g.title}</div>
+          <div class="rg-empty">Not played tonight.</div>
+        </div>`;
+    }
+    const total = g.maxWins + g.domWins;
+    const maxPct = total > 0 ? Math.round((g.maxWins/total)*100) : 50;
+    return `
+      <div class="report-game-card">
+        <div class="rg-title">${g.title}</div>
+        <div class="rg-score-row"><span>MAX ${g.maxWins}</span><span>DOM ${g.domWins}</span></div>
+        <div class="rg-bar"><div class="rg-bar-fill" style="width:${maxPct}%"></div></div>
+        <div class="rg-meta">${g.gamesPlayed} game${g.gamesPlayed===1?"":"s"} played${g.extra ? " &bull; " + g.extra : ""}</div>
+      </div>`;
+  }).join("");
+
+  let zestHtml;
+  if(snapshot.allZest.length === 0){
+    zestHtml = `<div class="zest-empty">No highlights logged tonight.</div>`;
+  } else {
+    zestHtml = snapshot.allZest.map(z => `
+      <div class="report-zest-entry">
+        <span class="rz-game">${escapeHtml(z.game)}</span>
+        <span class="rz-text">${escapeHtml(z.text)}</span>
+        <span class="rz-date">${formatDate(z.timestamp)}</span>
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("report-body").innerHTML = `
+    <div class="champion-card">
+      <div class="champion-label">CHAMPION OF THE NIGHT</div>
+      <div class="champion-name">${champion}</div>
+      <div class="champion-sub">${championSub}</div>
+    </div>
+
+    <div class="history-heading">By Game</div>
+    ${gamesHtml}
+
+    <div class="zest-box">
+      <div class="zest-heading">Highlights of the Night</div>
+      <div class="zest-sub">Every zest note logged across tonight's games, in order.</div>
+      ${zestHtml}
+    </div>
+
+    <footer>
+      <button class="reset-btn" onclick="window.print()">Print / Save as PDF</button>
+      <br><br>
+      <button class="win-btn" style="max-width:220px;margin:0 auto;display:block;" onclick="showScreen('home')">Done &mdash; Back to Games</button>
+      <p class="footnote">All trackers have been reset. Ready for the next game night.</p>
+    </footer>
+  `;
+}
+
+async function resetAllForNight(){
+  hiveApp = { gameNumber: 1, maxWins: 0, domWins: 0, current: hiveFreshState(), history: [], zest: [] };
+  await hiveSaveApp();
+  hiveRenderTopStats();
+  hiveRenderRules();
+  hiveComputeTotals();
+  hiveRenderHistory();
+  renderZest("hive");
+
+  for(const gameId of Object.keys(simpleGames)){
+    simpleApps[gameId] = simpleFreshApp();
+    await saveSimpleApp(gameId);
+    renderSimpleScreen(gameId);
+  }
+  updateHomeStats();
+}
+
+async function runNightReport(){
+  const snapshot = buildNightSnapshot();
+  renderNightReport(snapshot);
+  await resetAllForNight();
+  showScreen("report");
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+async function initAll(){
+  await initHive();
+  for(const gameId of Object.keys(simpleGames)){
+    await loadSimpleApp(gameId);
+    buildSimpleScreen(gameId);
+    renderSimpleScreen(gameId);
+  }
+  updateHomeStats();
+}
+
+initAll();
+
+// Register service worker for offline support when installed as a PWA.
+// This has no effect (and is harmless) when opened as a plain local file.
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+  });
+}
+</script>
+
+</body>
+</html>
