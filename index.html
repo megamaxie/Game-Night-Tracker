@@ -152,6 +152,7 @@
   .tile-onitama{ background:linear-gradient(135deg,#1c1712,#a02c2c); }
   .tile-duke{ background:linear-gradient(135deg,#232120,#7a2130); }
   .tile-warchest{ background:linear-gradient(135deg,#201a12,#96731c); }
+  .tile-splitg{ background:linear-gradient(135deg,#120d0a,#8a5a2b); }
 
   /* ===== Wins / scoreboard cards (shared) ===== */
   .wins-board{
@@ -396,6 +397,44 @@
     letter-spacing:0.5px;
   }
   .win-btn:active{transform:scale(0.97);}
+
+  /* ===== Hit/Miss controls (Splitting the G) ===== */
+  .hp-name{
+    color:var(--accent);
+    font-weight:800;
+    font-size:12px;
+    letter-spacing:1px;
+    margin-bottom:6px;
+  }
+  .hitmiss-player{ margin-bottom:14px; }
+  .hitmiss-player:last-child{ margin-bottom:0; }
+  .hitmiss-buttons{
+    display:flex;
+    gap:8px;
+  }
+  .hit-btn{
+    flex:1;
+    background:var(--accent);
+    color:var(--dark);
+    border:none;
+    border-radius:8px;
+    padding:10px;
+    font-weight:800;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .miss-btn{
+    flex:1;
+    background:rgba(255,255,255,0.08);
+    color:var(--cream);
+    border:1.5px solid rgba(255,255,255,0.25);
+    border-radius:8px;
+    padding:10px;
+    font-weight:800;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .hit-btn:active, .miss-btn:active{transform:scale(0.97);}
 
   /* ===== History (shared) ===== */
   .history-heading{
@@ -747,6 +786,10 @@
     --dark:#201a12; --accent:#d9a441; --accent2:#7a1f1f;
     --cream:#efe9df; --cream2:#e3dccc; --line:#c9b98a; --textdark:#3a3226;
   }
+  body[data-theme="splitg"]{
+    --dark:#120d0a; --accent:#d4af5a; --accent2:#8a5a2b;
+    --cream:#faf4e6; --cream2:#f0e6cf; --line:#d8c69a; --textdark:#3a2c18;
+  }
   body[data-theme="report"]{
     --dark:#141110; --accent:#e8c468; --accent2:#b08d3f;
     --cream:#fdf8ec; --cream2:#f5ecd6; --line:#d9c48a; --textdark:#3a2f1a;
@@ -802,11 +845,19 @@
       </div>
       <div class="tile-stats" id="home-warchest-stats">Max 0 &ndash; Dom 0</div>
     </button>
+    <button class="game-tile tile-splitg" onclick="showScreen('splitg')">
+      <div>
+        <div class="tile-icon">&#x1F37A;</div>
+        <div class="tile-name">Splitting the G</div>
+        <div class="tile-sub">Hit or miss the harp</div>
+      </div>
+      <div class="tile-stats" id="home-splitg-stats">Max 0 &ndash; Dom 0</div>
+    </button>
   </div>
   <div class="report-btn-wrap">
     <button class="report-btn" onclick="confirmNightReport()">Report of the Night</button>
   </div>
-  <p class="footnote" style="text-align:center;">One shelf, five rivalries. Tap a game to keep score.</p>
+  <p class="footnote" style="text-align:center;">One shelf, six rivalries. Tap a game to keep score.</p>
 </div>
 
 <!-- ============ HIVE SCREEN ============ -->
@@ -922,6 +973,16 @@
   <div class="container" id="warchest-body"></div>
 </div>
 
+<div class="screen" id="screen-splitg">
+  <header>
+    <button class="back-btn" onclick="showScreen('home')">&larr; Games</button>
+    <h1>SPLITTING THE G</h1>
+    <h2>HIT / MISS TRACKER</h2>
+    <p class="tagline">stop the sip dead on the harp</p>
+  </header>
+  <div class="container" id="splitg-body"></div>
+</div>
+
 <!-- ============ REPORT OF THE NIGHT SCREEN ============ -->
 <div class="screen" id="screen-report">
   <header>
@@ -1032,10 +1093,14 @@ function showScreen(name){
    Each game's app object has a `zest` array: [{id, timestamp, text}]
    ========================================================================= */
 function getAppFor(gameId){
-  return gameId === "hive" ? hiveApp : simpleApps[gameId];
+  if(gameId === "hive") return hiveApp;
+  if(gameId === "splitg") return splitGApp;
+  return simpleApps[gameId];
 }
 function saveAppFor(gameId){
-  return gameId === "hive" ? hiveSaveApp() : saveSimpleApp(gameId);
+  if(gameId === "hive") return hiveSaveApp();
+  if(gameId === "splitg") return saveSplitGApp();
+  return saveSimpleApp(gameId);
 }
 
 function renderZest(gameId){
@@ -1545,6 +1610,181 @@ function recordSimpleWin(gameId, winner){
 }
 
 /* =========================================================================
+   SPLITTING THE G ENGINE
+   Not a head-to-head board game - each person attempts independently, so
+   hits/misses are tracked per player rather than mirrored win/loss pairs.
+   Hits still count as "wins" for the home screen and Report of the Night.
+   ========================================================================= */
+const SPLITG_STORAGE_KEY = "game-tracker-splitg";
+
+function splitGFreshApp(){
+  return { maxWins: 0, maxMisses: 0, domWins: 0, domMisses: 0, history: [], zest: [] };
+}
+
+let splitGApp = splitGFreshApp();
+
+async function saveSplitGApp(){
+  await storageSet(SPLITG_STORAGE_KEY, JSON.stringify(splitGApp));
+}
+
+async function loadSplitGApp(){
+  const raw = await storageGet(SPLITG_STORAGE_KEY);
+  if(raw){
+    try{
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed.maxWins === "number"){
+        splitGApp = parsed;
+        if(!splitGApp.zest) splitGApp.zest = [];
+        if(!splitGApp.history) splitGApp.history = [];
+        if(typeof splitGApp.maxMisses !== "number") splitGApp.maxMisses = 0;
+        if(typeof splitGApp.domMisses !== "number") splitGApp.domMisses = 0;
+        return;
+      }
+    }catch(e){ /* fall through to fresh */ }
+  }
+  splitGApp = splitGFreshApp();
+}
+
+function buildSplitGScreen(){
+  const body = document.getElementById("splitg-body");
+  body.innerHTML = `
+    <div class="wins-board">
+      <div class="wins-card">
+        <div class="name">MAX</div>
+        <div class="count" id="splitg-max-hits">0</div>
+        <div class="label">Hits</div>
+      </div>
+      <div class="wins-card">
+        <div class="name">DOM</div>
+        <div class="count" id="splitg-dom-hits">0</div>
+        <div class="label">Hits</div>
+      </div>
+    </div>
+    <div class="losses-row">
+      <div>Max misses: <span id="splitg-max-misses">0</span> &bull; <span id="splitg-max-rate">0%</span> hit rate</div>
+      <div>Dom misses: <span id="splitg-dom-misses">0</span> &bull; <span id="splitg-dom-rate">0%</span> hit rate</div>
+    </div>
+
+    <div class="endgame-box">
+      <div class="eg-title">LOG AN ATTEMPT</div>
+      <div class="hitmiss-player">
+        <div class="hp-name">MAX</div>
+        <div class="hitmiss-buttons">
+          <button class="hit-btn" data-player="Max" data-result="hit">HIT</button>
+          <button class="miss-btn" data-player="Max" data-result="miss">MISS</button>
+        </div>
+      </div>
+      <div class="hitmiss-player">
+        <div class="hp-name">DOM</div>
+        <div class="hitmiss-buttons">
+          <button class="hit-btn" data-player="Dom" data-result="hit">HIT</button>
+          <button class="miss-btn" data-player="Dom" data-result="miss">MISS</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="history-heading">Attempt History</div>
+    <div id="splitg-history"></div>
+
+    <div class="zest-box">
+      <div class="zest-heading">Splitting the G Zest</div>
+      <div class="zest-sub">Log the perfect split, the total disaster, the arguments about what counts.</div>
+      <div class="zest-input-row">
+        <input type="text" id="splitg-zest-input" placeholder="e.g. Dom split it dead center on the first pint">
+        <button class="zest-add-btn" onclick="addZest('splitg')">Add</button>
+      </div>
+      <div id="splitg-zest-list"></div>
+    </div>
+
+    <footer>
+      <button class="reset-btn" id="splitg-reset-btn">Reset Splitting the G Data</button>
+      <p class="footnote">Not officially a board game. Still counts.</p>
+    </footer>
+  `;
+
+  body.querySelectorAll(".hit-btn, .miss-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      recordSplitGAttempt(btn.getAttribute("data-player"), btn.getAttribute("data-result"));
+    });
+  });
+  body.querySelector("#splitg-reset-btn").addEventListener("click", ()=>{
+    showModal("Reset Splitting the G data?", "This clears hits, misses, history, and zest notes for this game only. This can't be undone.", () => {
+      splitGApp = splitGFreshApp();
+      renderSplitGScreen();
+      saveSplitGApp();
+      updateHomeStats();
+    });
+  });
+}
+
+function renderSplitGScreen(){
+  document.getElementById("splitg-max-hits").textContent = splitGApp.maxWins;
+  document.getElementById("splitg-dom-hits").textContent = splitGApp.domWins;
+  document.getElementById("splitg-max-misses").textContent = splitGApp.maxMisses;
+  document.getElementById("splitg-dom-misses").textContent = splitGApp.domMisses;
+  const maxAttempts = splitGApp.maxWins + splitGApp.maxMisses;
+  const domAttempts = splitGApp.domWins + splitGApp.domMisses;
+  const maxRate = maxAttempts > 0 ? Math.round((splitGApp.maxWins/maxAttempts)*100) : 0;
+  const domRate = domAttempts > 0 ? Math.round((splitGApp.domWins/domAttempts)*100) : 0;
+  document.getElementById("splitg-max-rate").textContent = `${maxRate}%`;
+  document.getElementById("splitg-dom-rate").textContent = `${domRate}%`;
+  renderSplitGHistory();
+  renderZest("splitg");
+}
+
+function renderSplitGHistory(){
+  const container = document.getElementById("splitg-history");
+  if(splitGApp.history.length === 0){
+    container.innerHTML = `<div class="history-empty">No attempts logged yet.</div>`;
+    return;
+  }
+  const ordered = [...splitGApp.history].reverse();
+  container.innerHTML = ordered.map(a => `
+    <div class="simple-history-row">
+      <div>
+        <span class="shr-winner">${a.player} \u2014 ${a.result === "hit" ? "Hit" : "Miss"}</span> &nbsp;
+        <span class="shr-date">${formatDate(a.timestamp)}</span>
+      </div>
+      <button class="shr-remove" data-remove-id="${a.id}">remove</button>
+    </div>
+  `).join("");
+  container.querySelectorAll(".shr-remove").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = Number(btn.getAttribute("data-remove-id"));
+      showModal("Remove this attempt?", "This un-counts it and deletes the entry.", () => {
+        const idx = splitGApp.history.findIndex(a=>a.id === id);
+        if(idx > -1){
+          const removed = splitGApp.history[idx];
+          if(removed.player === "Max"){
+            if(removed.result === "hit") splitGApp.maxWins = Math.max(0, splitGApp.maxWins - 1);
+            else splitGApp.maxMisses = Math.max(0, splitGApp.maxMisses - 1);
+          } else {
+            if(removed.result === "hit") splitGApp.domWins = Math.max(0, splitGApp.domWins - 1);
+            else splitGApp.domMisses = Math.max(0, splitGApp.domMisses - 1);
+          }
+          splitGApp.history.splice(idx,1);
+          renderSplitGScreen();
+          saveSplitGApp();
+          updateHomeStats();
+        }
+      });
+    });
+  });
+}
+
+function recordSplitGAttempt(player, result){
+  splitGApp.history.push({id: Date.now(), timestamp: new Date().toISOString(), player, result});
+  if(player === "Max"){
+    if(result === "hit") splitGApp.maxWins += 1; else splitGApp.maxMisses += 1;
+  } else {
+    if(result === "hit") splitGApp.domWins += 1; else splitGApp.domMisses += 1;
+  }
+  renderSplitGScreen();
+  saveSplitGApp();
+  updateHomeStats();
+}
+
+/* =========================================================================
    HOME SCREEN STATS
    ========================================================================= */
 function updateHomeStats(){
@@ -1555,11 +1795,13 @@ function updateHomeStats(){
     const app = simpleApps[gameId];
     if(el && app) el.textContent = `Max ${app.maxWins} \u2013 Dom ${app.domWins}`;
   });
+  const splitgEl = document.getElementById("home-splitg-stats");
+  if(splitgEl) splitgEl.textContent = `Max ${splitGApp.maxWins} \u2013 Dom ${splitGApp.domWins}`;
 }
 
 /* =========================================================================
    REPORT OF THE NIGHT
-   Snapshots all five games' stats + zest notes, renders a stylised recap,
+   Snapshots all six games' stats + zest notes, renders a stylised recap,
    then resets every tracker for the next game night.
    ========================================================================= */
 function confirmNightReport(){
@@ -1600,6 +1842,20 @@ function buildNightSnapshot(){
       extra: null,
       zest: app.zest || []
     });
+  });
+
+  const sgMaxAttempts = splitGApp.maxWins + splitGApp.maxMisses;
+  const sgDomAttempts = splitGApp.domWins + splitGApp.domMisses;
+  const sgMaxRate = sgMaxAttempts > 0 ? Math.round((splitGApp.maxWins/sgMaxAttempts)*100) : 0;
+  const sgDomRate = sgDomAttempts > 0 ? Math.round((splitGApp.domWins/sgDomAttempts)*100) : 0;
+  games.push({
+    id: "splitg",
+    title: "Splitting the G",
+    maxWins: splitGApp.maxWins,
+    domWins: splitGApp.domWins,
+    gamesPlayed: splitGApp.history.length,
+    extra: splitGApp.history.length > 0 ? `Max ${sgMaxRate}% hit rate \u2022 Dom ${sgDomRate}% hit rate` : null,
+    zest: splitGApp.zest || []
   });
 
   const totalGames = games.reduce((s,g)=>s+g.gamesPlayed, 0);
@@ -1703,6 +1959,11 @@ async function resetAllForNight(){
     await saveSimpleApp(gameId);
     renderSimpleScreen(gameId);
   }
+
+  splitGApp = splitGFreshApp();
+  await saveSplitGApp();
+  renderSplitGScreen();
+
   updateHomeStats();
 }
 
@@ -1723,6 +1984,9 @@ async function initAll(){
     buildSimpleScreen(gameId);
     renderSimpleScreen(gameId);
   }
+  await loadSplitGApp();
+  buildSplitGScreen();
+  renderSplitGScreen();
   updateHomeStats();
 }
 
